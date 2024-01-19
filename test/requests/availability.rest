@@ -1,0 +1,4 @@
+http://localhost:8080
+GET /v1/readiness
+
+GET /v1/err
