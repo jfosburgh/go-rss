@@ -1,5 +1,9 @@
 http://localhost:8080
-POST /v1/users
-{
-	"name":"James"
-}
+# POST /v1/users
+# {
+# 	"name":"James"
+# }
+
+Authorization: ApiKey 8de44991b8cdc784e5ece5859a300547a7e7baa346ac91b9100c5030e47620af
+GET /v1/users
+

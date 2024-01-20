@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -32,24 +33,35 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	userParams := params{}
 	err := jsonDecoder.Decode(&userParams)
 	if err != nil {
-		respondWithError(w, 500, fmt.Sprintf("%v", err))
+		respondWithError(w, 400, fmt.Sprintf("Could not parse body as user: %v", err))
 		return
 	}
 
 	id := uuid.New()
-	if err != nil {
-		respondWithError(w, 500, fmt.Sprintf("%v", err))
-		return
-	}
-
 	now := time.Now().UTC()
 	user, err := cfg.DB.CreateUser(r.Context(), database.CreateUserParams{ID: id, CreatedAt: now, UpdatedAt: now, Name: userParams.Name})
 	if err != nil {
-		respondWithError(w, 500, fmt.Sprintf("%v", err))
+		respondWithError(w, 400, fmt.Sprintf("Could not create user: %v", err))
 		return
 	}
 
 	respondWithJSON(w, 201, user)
+}
+
+func (cfg *apiConfig) handleGetUserByAPIKey(w http.ResponseWriter, r *http.Request) {
+	apiKey, ok := strings.CutPrefix(r.Header.Get("Authorization"), "ApiKey ")
+	if !ok {
+		respondWithError(w, 401, "ApiKey required")
+		return
+	}
+
+	user, err := cfg.DB.GetUserByAPIKey(r.Context(), apiKey)
+	if err != nil {
+		respondWithError(w, 404, fmt.Sprintf("No user found: %v", err))
+		return
+	}
+
+	respondWithJSON(w, 200, user)
 }
 
 func createV1Router(config *apiConfig) chi.Router {
@@ -57,6 +69,8 @@ func createV1Router(config *apiConfig) chi.Router {
 
 	v1.Get("/readiness", handleGetReadiness)
 	v1.Get("/err", handleGetError)
+	v1.Get("/users", config.handleGetUserByAPIKey)
+
 	v1.Post("/users", config.handleCreateUser)
 
 	return v1
