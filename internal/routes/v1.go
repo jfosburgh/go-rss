@@ -47,6 +47,15 @@ func (cfg *apiConfig) handleFeedCreate(w http.ResponseWriter, r *http.Request, u
 	respondWithJSON(w, 201, feed)
 }
 
+func (cfg *apiConfig) handleFeedGetAll(w http.ResponseWriter, r *http.Request) {
+	feeds, err := cfg.DB.GetAllFeeds(r.Context())
+	if err != nil {
+		respondWithError(w, 500, fmt.Sprintf("Error collecting feeds: %v", err))
+	}
+
+	respondWithJSON(w, 200, feeds)
+}
+
 func (cfg *apiConfig) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Name string `json:"name"`
@@ -83,6 +92,7 @@ func createV1Router(config *apiConfig) chi.Router {
 	v1.Get("/users", config.authMiddleware(config.handleUserGet))
 	v1.Post("/users", config.handleUserCreate)
 
+	v1.Get("/feeds", config.handleFeedGetAll)
 	v1.Post("/feeds", config.authMiddleware(config.handleFeedCreate))
 
 	return v1

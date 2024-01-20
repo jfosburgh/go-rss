@@ -9,11 +9,13 @@ http://localhost:8080
 # Authorization: ApiKey 8de44991b8cdc784e5ece5859a300547a7e7baa346ac91b9100c5030e47620af
 # GET /v1/users
 
-# Create a feed
-Authorization: ApiKey 8de44991b8cdc784e5ece5859a300547a7e7baa346ac91b9100c5030e47620af
-POST /v1/feeds
-{
-  "name": "The Boot.dev Blog",
-  "url": "https://blog.boot.dev/index.xml"
-}
+# # Create a feed
+# Authorization: ApiKey 8de44991b8cdc784e5ece5859a300547a7e7baa346ac91b9100c5030e47620af
+# POST /v1/feeds
+# {
+#   "name": "The Boot.dev Blog",
+#   "url": "https://blog.boot.dev/index.xml"
+# }
 
+# Get all feeds
+GET /v1/feeds
