@@ -23,22 +23,45 @@ func handleGetError(w http.ResponseWriter, r *http.Request) {
 	respondWithError(w, 500, "Internal Server Error")
 }
 
-func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
-	type params struct {
+func (cfg *apiConfig) handleFeedCreate(w http.ResponseWriter, r *http.Request, user database.User) {
+	type parameters struct {
 		Name string `json:"name"`
+		Url  string `json:"url"`
 	}
 
+	params := parameters{}
 	jsonDecoder := json.NewDecoder(r.Body)
-	userParams := params{}
-	err := jsonDecoder.Decode(&userParams)
+	err := jsonDecoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, 400, fmt.Sprintf("Could not parse body as user: %v", err))
-		return
 	}
 
 	id := uuid.New()
 	now := time.Now().UTC()
-	user, err := cfg.DB.CreateUser(r.Context(), database.CreateUserParams{ID: id, CreatedAt: now, UpdatedAt: now, Name: userParams.Name})
+	feed, err := cfg.DB.CreateFeed(r.Context(), database.CreateFeedParams{ID: id, CreatedAt: now, UpdatedAt: now, Name: params.Name, Url: params.Url, UserID: user.ID})
+	if err != nil {
+		respondWithError(w, 400, fmt.Sprintf("Could not create feed: %v", err))
+		return
+	}
+
+	respondWithJSON(w, 201, feed)
+}
+
+func (cfg *apiConfig) handleUserCreate(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Name string `json:"name"`
+	}
+
+	params := parameters{}
+	jsonDecoder := json.NewDecoder(r.Body)
+	err := jsonDecoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, 400, fmt.Sprintf("Could not parse body as user: %v", err))
+	}
+
+	id := uuid.New()
+	now := time.Now().UTC()
+	user, err := cfg.DB.CreateUser(r.Context(), database.CreateUserParams{ID: id, CreatedAt: now, UpdatedAt: now, Name: params.Name})
 	if err != nil {
 		respondWithError(w, 400, fmt.Sprintf("Could not create user: %v", err))
 		return
@@ -47,7 +70,7 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, 201, user)
 }
 
-func (cfg *apiConfig) handleGetUserByAPIKey(w http.ResponseWriter, r *http.Request, user database.User) {
+func (cfg *apiConfig) handleUserGet(w http.ResponseWriter, r *http.Request, user database.User) {
 	respondWithJSON(w, 200, user)
 }
 
@@ -56,9 +79,11 @@ func createV1Router(config *apiConfig) chi.Router {
 
 	v1.Get("/readiness", handleGetReadiness)
 	v1.Get("/err", handleGetError)
-	v1.Get("/users", config.authMiddleware(config.handleGetUserByAPIKey))
 
-	v1.Post("/users", config.handleCreateUser)
+	v1.Get("/users", config.authMiddleware(config.handleUserGet))
+	v1.Post("/users", config.handleUserCreate)
+
+	v1.Post("/feeds", config.authMiddleware(config.handleFeedCreate))
 
 	return v1
 }
