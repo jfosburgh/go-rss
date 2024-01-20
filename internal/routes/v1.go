@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -48,19 +47,7 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, 201, user)
 }
 
-func (cfg *apiConfig) handleGetUserByAPIKey(w http.ResponseWriter, r *http.Request) {
-	apiKey, ok := strings.CutPrefix(r.Header.Get("Authorization"), "ApiKey ")
-	if !ok {
-		respondWithError(w, 401, "ApiKey required")
-		return
-	}
-
-	user, err := cfg.DB.GetUserByAPIKey(r.Context(), apiKey)
-	if err != nil {
-		respondWithError(w, 404, fmt.Sprintf("No user found: %v", err))
-		return
-	}
-
+func (cfg *apiConfig) handleGetUserByAPIKey(w http.ResponseWriter, r *http.Request, user database.User) {
 	respondWithJSON(w, 200, user)
 }
 
@@ -69,7 +56,7 @@ func createV1Router(config *apiConfig) chi.Router {
 
 	v1.Get("/readiness", handleGetReadiness)
 	v1.Get("/err", handleGetError)
-	v1.Get("/users", config.handleGetUserByAPIKey)
+	v1.Get("/users", config.authMiddleware(config.handleGetUserByAPIKey))
 
 	v1.Post("/users", config.handleCreateUser)
 
