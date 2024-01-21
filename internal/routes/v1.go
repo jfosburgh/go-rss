@@ -2,6 +2,8 @@ package routes
 
 import (
 	// "database/sql"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -162,6 +164,21 @@ func createV1Router(config *apiConfig) chi.Router {
 	v1.Get("/feed_follows", config.authMiddleware(config.handleFeedFollowGet))
 	v1.Post("/feed_follows", config.authMiddleware(config.handleFeedFollowCreate))
 	v1.Delete("/feed_follows/{feedFollowID}", config.handleFeedFollowDelete)
+
+	feedToUpdate, _ := uuid.Parse("d2852e3a-26cc-4672-94f2-3513130a2f07")
+	now := sql.NullTime{Time: time.Now().UTC(), Valid: true}
+	params := database.MarkFeedFetchedParams{LastFetchedAt: now, ID: feedToUpdate}
+	_ = config.DB.MarkFeedFetched(context.Background(), params)
+
+	time.Sleep(time.Second * 5)
+
+	feedToUpdate, _ = uuid.Parse("f83dacad-32af-49d7-a812-7d5ca5216e00")
+	now = sql.NullTime{Time: time.Now().UTC(), Valid: true}
+	params = database.MarkFeedFetchedParams{LastFetchedAt: now, ID: feedToUpdate}
+	_ = config.DB.MarkFeedFetched(context.Background(), params)
+
+	feeds, _ := config.DB.GetNextFeedsToFetch(context.Background(), 30)
+	fmt.Print(feeds)
 
 	return v1
 }
