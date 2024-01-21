@@ -9,6 +9,7 @@ import (
 
 	"github.com/jfosburgh/go-rss/internal/database"
 	"github.com/jfosburgh/go-rss/internal/routes"
+	"github.com/jfosburgh/go-rss/internal/scraper"
 	"github.com/joho/godotenv"
 
 	_ "github.com/lib/pq"
@@ -32,5 +33,6 @@ func main() {
 		Handler: r,
 	}
 
+	go scraper.FetchFeeds(dbQueries, 10, 2)
 	log.Fatal(server.ListenAndServe())
 }

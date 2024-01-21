@@ -1,10 +1,15 @@
 package scraper
 
 import (
+	"context"
 	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
+	"time"
+
+	"github.com/jfosburgh/go-rss/internal/database"
 )
 
 type rss struct {
@@ -36,7 +41,7 @@ type rss struct {
 	} `xml:"channel"`
 }
 
-func FetchXML(url string) (rss, error) {
+func fetchXML(url string) (rss, error) {
 	r, err := http.Get(url)
 	rssData := rss{}
 	if err != nil {
@@ -59,4 +64,26 @@ func FetchXML(url string) (rss, error) {
 	}
 
 	return rssData, nil
+}
+
+func FetchFeeds(DB *database.Queries, interval, batchSize int32) {
+	var wg sync.WaitGroup
+	for true {
+		feeds, _ := DB.GetNextFeedsToFetch(context.Background(), batchSize)
+		for _, feed := range feeds {
+			wg.Add(1)
+			go func(url string) {
+				defer wg.Done()
+				fmt.Printf("Fetching data from %s\n", url)
+				rssData, _ := fetchXML(url)
+				fmt.Printf("Found %d articles\n", len(rssData.Channel.Item))
+			}(feed.Url)
+		}
+
+		fmt.Printf("Waiting for data to be fetched\n")
+		wg.Wait()
+
+		fmt.Printf("Sleeping for %d seconds\n", interval)
+		time.Sleep(time.Second * time.Duration(interval))
+	}
 }
