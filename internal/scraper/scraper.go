@@ -68,6 +68,33 @@ func fetchXML(url string) (rss, error) {
 	return rssData, nil
 }
 
+var timeFormats = []string{
+	time.RFC1123Z,
+	time.ANSIC,
+	time.RFC822,
+	time.RFC850,
+	time.Stamp,
+	time.RFC1123,
+	time.RFC3339,
+	time.RFC822Z,
+	time.UnixDate,
+	time.RubyDate,
+	time.RFC3339Nano,
+}
+
+func parseTime(unknownTime string) (time.Time, error) {
+	var parsedTime time.Time
+	var err error
+	for _, layout := range timeFormats {
+		parsedTime, err = time.Parse(layout, unknownTime)
+		if err == nil {
+			return parsedTime, err
+		}
+	}
+
+	return parsedTime, err
+}
+
 func FetchFeeds(DB *database.Queries, interval, batchSize int32) {
 	var wg sync.WaitGroup
 	for true {
@@ -84,7 +111,7 @@ func FetchFeeds(DB *database.Queries, interval, batchSize int32) {
 					if post.Description != "" {
 						descriptionValid = true
 					}
-					publishedAt, err := time.Parse(time.RFC1123Z, post.PubDate)
+					publishedAt, err := parseTime(post.PubDate)
 					if err != nil {
 						fmt.Printf("Could not parse %s as ANSIC date\n", post.PubDate)
 					}
