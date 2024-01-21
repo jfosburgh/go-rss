@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jfosburgh/go-rss/internal/database"
+	"github.com/jfosburgh/go-rss/internal/scraper"
 )
 
 func handleGetReadiness(w http.ResponseWriter, r *http.Request) {
@@ -170,8 +171,6 @@ func createV1Router(config *apiConfig) chi.Router {
 	params := database.MarkFeedFetchedParams{LastFetchedAt: now, ID: feedToUpdate}
 	_ = config.DB.MarkFeedFetched(context.Background(), params)
 
-	time.Sleep(time.Second * 5)
-
 	feedToUpdate, _ = uuid.Parse("f83dacad-32af-49d7-a812-7d5ca5216e00")
 	now = sql.NullTime{Time: time.Now().UTC(), Valid: true}
 	params = database.MarkFeedFetchedParams{LastFetchedAt: now, ID: feedToUpdate}
@@ -179,6 +178,9 @@ func createV1Router(config *apiConfig) chi.Router {
 
 	feeds, _ := config.DB.GetNextFeedsToFetch(context.Background(), 30)
 	fmt.Print(feeds)
+
+	rssData, _ := scraper.FetchXML(feeds[0].Url)
+	fmt.Printf("%v", rssData)
 
 	return v1
 }
