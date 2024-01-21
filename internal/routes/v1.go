@@ -83,6 +83,18 @@ func (cfg *apiConfig) handleFeedFollowCreate(w http.ResponseWriter, r *http.Requ
 	respondWithJSON(w, 201, feedFollow)
 }
 
+func (cfg *apiConfig) handleFeedFollowDelete(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "feedFollowID")
+
+	feedFollowID, err := uuid.Parse(id)
+	if err != nil {
+		respondWithError(w, 400, fmt.Sprintf("Error parsing feedFollowID as UUID: %v", err))
+	}
+
+	err = cfg.DB.DeleteFeedFollow(r.Context(), feedFollowID)
+	w.WriteHeader(204)
+}
+
 func (cfg *apiConfig) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Name string `json:"name"`
@@ -123,6 +135,7 @@ func createV1Router(config *apiConfig) chi.Router {
 	v1.Post("/feeds", config.authMiddleware(config.handleFeedCreate))
 
 	v1.Post("/feed_follows", config.authMiddleware(config.handleFeedFollowCreate))
+	v1.Delete("/feed_follows/{feedFollowID}", config.handleFeedFollowDelete)
 
 	return v1
 }
