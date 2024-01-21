@@ -1,6 +1,7 @@
 package routes
 
 import (
+	// "database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -38,7 +39,9 @@ func (cfg *apiConfig) handleFeedCreate(w http.ResponseWriter, r *http.Request, u
 
 	id := uuid.New()
 	now := time.Now().UTC()
-	feed, err := cfg.DB.CreateFeed(r.Context(), database.CreateFeedParams{ID: id, CreatedAt: now, UpdatedAt: now, Name: params.Name, Url: params.Url, UserID: user.ID})
+
+	feedParams := database.CreateFeedParams{ID: id, CreatedAt: now, UpdatedAt: now, Name: params.Name, Url: params.Url, UserID: user.ID}
+	feed, err := cfg.DB.CreateFeed(r.Context(), feedParams)
 	if err != nil {
 		respondWithError(w, 400, fmt.Sprintf("Could not create feed: %v", err))
 		return
@@ -51,11 +54,11 @@ func (cfg *apiConfig) handleFeedCreate(w http.ResponseWriter, r *http.Request, u
 	}
 
 	type returnparams struct {
-		Feed       database.Feed       `json:"feed"`
-		FeedFollow database.FeedFollow `json:"feed_follow"`
+		Feed       Feed       `json:"feed"`
+		FeedFollow FeedFollow `json:"feed_follow"`
 	}
 
-	returnParams := returnparams{Feed: feed, FeedFollow: feedFollow}
+	returnParams := returnparams{Feed: databaseFeedToFeed(feed), FeedFollow: databaseFeedFollowToFeedFollow(feedFollow)}
 
 	respondWithJSON(w, 201, returnParams)
 }
@@ -66,7 +69,7 @@ func (cfg *apiConfig) handleFeedGetAll(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 500, fmt.Sprintf("Error collecting feeds: %v", err))
 	}
 
-	respondWithJSON(w, 200, feeds)
+	respondWithJSON(w, 200, databaseFeedArrayToFeedArray(feeds))
 }
 
 func (cfg *apiConfig) handleFeedFollowCreate(w http.ResponseWriter, r *http.Request, user database.User) {
@@ -93,7 +96,7 @@ func (cfg *apiConfig) handleFeedFollowCreate(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	respondWithJSON(w, 201, feedFollow)
+	respondWithJSON(w, 201, databaseFeedFollowToFeedFollow(feedFollow))
 }
 
 func (cfg *apiConfig) handleFeedFollowDelete(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +117,7 @@ func (cfg *apiConfig) handleFeedFollowGet(w http.ResponseWriter, r *http.Request
 		respondWithError(w, 404, fmt.Sprintf("Error looking up feed follows: %v", err))
 	}
 
-	respondWithJSON(w, 200, feedFollows)
+	respondWithJSON(w, 200, databaseFeedFollowArrayToFeedFollowArray(feedFollows))
 }
 
 func (cfg *apiConfig) handleUserCreate(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +140,7 @@ func (cfg *apiConfig) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, 201, user)
+	respondWithJSON(w, 201, databaseUserToUser(user))
 }
 
 func (cfg *apiConfig) handleUserGet(w http.ResponseWriter, r *http.Request, user database.User) {
