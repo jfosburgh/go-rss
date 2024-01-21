@@ -44,7 +44,20 @@ func (cfg *apiConfig) handleFeedCreate(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 
-	respondWithJSON(w, 201, feed)
+	feedFollowParams := database.CreateFeedFollowParams{ID: uuid.New(), CreatedAt: now, UpdatedAt: now, UserID: user.ID, FeedID: feed.ID}
+	feedFollow, err := cfg.DB.CreateFeedFollow(r.Context(), feedFollowParams)
+	if err != nil {
+		respondWithError(w, 500, fmt.Sprintf("Feed created successfully but couldn't add feed follow: %v", err))
+	}
+
+	type returnparams struct {
+		Feed       database.Feed       `json:"feed"`
+		FeedFollow database.FeedFollow `json:"feed_follow"`
+	}
+
+	returnParams := returnparams{Feed: feed, FeedFollow: feedFollow}
+
+	respondWithJSON(w, 201, returnParams)
 }
 
 func (cfg *apiConfig) handleFeedGetAll(w http.ResponseWriter, r *http.Request) {
