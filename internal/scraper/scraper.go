@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"context"
+	"database/sql"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jfosburgh/go-rss/internal/database"
 )
 
@@ -72,18 +74,40 @@ func FetchFeeds(DB *database.Queries, interval, batchSize int32) {
 		feeds, _ := DB.GetNextFeedsToFetch(context.Background(), batchSize)
 		for _, feed := range feeds {
 			wg.Add(1)
-			go func(url string) {
+			go func(url string, feedId uuid.UUID) {
 				defer wg.Done()
-				fmt.Printf("Fetching data from %s\n", url)
 				rssData, _ := fetchXML(url)
-				fmt.Printf("Found %d articles\n", len(rssData.Channel.Item))
-			}(feed.Url)
+				for _, post := range rssData.Channel.Item {
+					now := time.Now().UTC()
+					description := post.Description
+					descriptionValid := false
+					if post.Description != "" {
+						descriptionValid = true
+					}
+					publishedAt, err := time.Parse(time.RFC1123Z, post.PubDate)
+					if err != nil {
+						fmt.Printf("Could not parse %s as ANSIC date\n", post.PubDate)
+					}
+					params := database.CreatePostParams{
+						ID:          uuid.New(),
+						CreatedAt:   now,
+						UpdatedAt:   now,
+						Title:       post.Title,
+						Description: sql.NullString{String: description, Valid: descriptionValid},
+						Url:         post.Link,
+						PublishedAt: publishedAt.UTC(),
+						FeedID:      feedId,
+					}
+					_, err = DB.CreatePost(context.Background(), params)
+					if err != nil && err != sql.ErrNoRows {
+						fmt.Printf("Error creating post: %v\n", err)
+					}
+				}
+			}(feed.Url, feed.ID)
 		}
 
-		fmt.Printf("Waiting for data to be fetched\n")
 		wg.Wait()
 
-		fmt.Printf("Sleeping for %d seconds\n", interval)
 		time.Sleep(time.Second * time.Duration(interval))
 	}
 }
