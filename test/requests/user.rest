@@ -17,5 +17,12 @@ http://localhost:8080
 #   "url": "https://blog.boot.dev/index.xml"
 # }
 
-# Get all feeds
-GET /v1/feeds
+# # Get all feeds
+# GET /v1/feeds
+
+# Create a feed follow
+Authorization: ApiKey 8de44991b8cdc784e5ece5859a300547a7e7baa346ac91b9100c5030e47620af
+POST /v1/feed_follows
+{
+	"feed_id":"f83dacad-32af-49d7-a812-7d5ca5216e00"
+}

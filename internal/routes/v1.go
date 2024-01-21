@@ -56,6 +56,33 @@ func (cfg *apiConfig) handleFeedGetAll(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, 200, feeds)
 }
 
+func (cfg *apiConfig) handleFeedFollowCreate(w http.ResponseWriter, r *http.Request, user database.User) {
+	type parameters struct {
+		FeedId string `json:"feed_id"`
+	}
+
+	params := parameters{}
+	jsonDecoder := json.NewDecoder(r.Body)
+	err := jsonDecoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, 400, fmt.Sprintf("Could not parse body as user: %v", err))
+	}
+
+	feedUUID, err := uuid.Parse(params.FeedId)
+
+	id := uuid.New()
+	now := time.Now().UTC()
+
+	feedFollowParams := database.CreateFeedFollowParams{ID: id, CreatedAt: now, UpdatedAt: now, UserID: user.ID, FeedID: feedUUID}
+	feedFollow, err := cfg.DB.CreateFeedFollow(r.Context(), feedFollowParams)
+	if err != nil {
+		respondWithError(w, 400, fmt.Sprintf("Could not create feed follow: %v", err))
+		return
+	}
+
+	respondWithJSON(w, 201, feedFollow)
+}
+
 func (cfg *apiConfig) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Name string `json:"name"`
@@ -94,6 +121,8 @@ func createV1Router(config *apiConfig) chi.Router {
 
 	v1.Get("/feeds", config.handleFeedGetAll)
 	v1.Post("/feeds", config.authMiddleware(config.handleFeedCreate))
+
+	v1.Post("/feed_follows", config.authMiddleware(config.handleFeedFollowCreate))
 
 	return v1
 }
