@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -120,6 +121,34 @@ func (cfg *apiConfig) handleFeedFollowGet(w http.ResponseWriter, r *http.Request
 	respondWithJSON(w, 200, databaseFeedFollowArrayToFeedFollowArray(feedFollows))
 }
 
+func (cfg *apiConfig) handlePostsGetByUser(w http.ResponseWriter, r *http.Request, user database.User) {
+	limitStr := r.URL.Query().Get("limit")
+	limit := 10
+	if limitStr != "" {
+		limitInt, err := strconv.Atoi(limitStr)
+		if err == nil {
+			limit = limitInt
+		}
+	}
+
+	pageStr := r.URL.Query().Get("page")
+	page := 1
+	if pageStr != "" {
+		pageInt, err := strconv.Atoi(pageStr)
+		if err == nil {
+			page = pageInt
+		}
+	}
+
+	params := database.GetPostsByUserParams{UserID: user.ID, Limit: int32(limit), Offset: int32((page - 1) * limit)}
+	posts, err := cfg.DB.GetPostsByUser(r.Context(), params)
+	if err != nil {
+		respondWithError(w, 500, fmt.Sprintf("Error fetching posts: %v", err))
+	}
+
+	respondWithJSON(w, 200, databasePostArrayToPostArray(posts))
+}
+
 func (cfg *apiConfig) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Name string `json:"name"`
@@ -162,6 +191,8 @@ func createV1Router(config *apiConfig) chi.Router {
 	v1.Get("/feed_follows", config.authMiddleware(config.handleFeedFollowGet))
 	v1.Post("/feed_follows", config.authMiddleware(config.handleFeedFollowCreate))
 	v1.Delete("/feed_follows/{feedFollowID}", config.handleFeedFollowDelete)
+
+	v1.Get("/posts", config.authMiddleware(config.handlePostsGetByUser))
 
 	return v1
 }

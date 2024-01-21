@@ -33,6 +33,6 @@ func main() {
 		Handler: r,
 	}
 
-	go scraper.FetchFeeds(dbQueries, 10, 2)
+	go scraper.FetchFeeds(dbQueries, 60, 2)
 	log.Fatal(server.ListenAndServe())
 }
